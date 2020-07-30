@@ -27,6 +27,7 @@ new$V6 <- p.adjust(new$V2,method="BH")
 #create a column of featureCounts FDR values
 new$V7 <- p.adjust(new$V3,method="BH")
 
+#the max and min of each axis
 axis_max <- max(max(new$V4),max(new$V5))
 axis_min <- min(min(new$V4),min(new$V5))
 
