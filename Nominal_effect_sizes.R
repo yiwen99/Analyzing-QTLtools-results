@@ -23,13 +23,13 @@ new <- cbind(k_common$V1, k_common$V12, f_common$V12,k_common$V13,f_common$V13)
 new <- as.data.frame(new)
 
 #create a column of kallisto FDR values
-new$V6 <- p.adjust(new$V2,method="BH")
+new$V6 <- p.adjust(as.numeric(new$V2),method="BH")
 #create a column of featureCounts FDR values
-new$V7 <- p.adjust(new$V3,method="BH")
+new$V7 <- p.adjust(as.numeric(new$V3),method="BH")
 
 #the max and min of each axis
-axis_max <- max(max(new$V4),max(new$V5))
-axis_min <- min(min(new$V4),min(new$V5))
+axis_max <- max(max(as.numeric(new$V4)),max(as.numeric(new$V5)))
+axis_min <- min(min(as.numeric(new$V4)),min(as.numeric(new$V5)))
 
 library(ggplot2)
 pdf("Nominal Effect Sizes_k_FDR.pdf")
