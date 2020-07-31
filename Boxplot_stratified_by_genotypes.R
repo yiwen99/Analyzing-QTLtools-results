@@ -52,7 +52,7 @@ output <- left_join(nominal21_kallisto, permutation21_kallisto,by="V1") #1048915
 output_needed <- output[,c(1,2,8)]
 #col1 gene id           col2 chromosome        col3 snp id
 
-#sp <- "rs180734498"
+#snp <- "rs2821672"
 #which(output_needed$V8.x==sp) #row
 
 intersection <- read.table("yri_sample_intersection.txt")
@@ -79,13 +79,13 @@ box_genotype <- function(snp){
   for_boxplot <- as.data.frame(t(rbind(dosage,levels)))
   
   
-  boxplot(for_boxplot$V2~ for_boxplot$V1, main=sp, xlab="snp dosage", ylab="expression level", horizontal=FALSE) 
+  #boxplot(for_boxplot$V2~ for_boxplot$V1, main=sp, xlab="snp dosage", ylab="expression level", horizontal=FALSE) 
   
   for_boxplot$V1 <- as.factor(for_boxplot$V1)
   my.bp <- ggplot(data=for_boxplot, aes(y= V2, x=V1 ) )+geom_boxplot()+
     ggtitle(snp)+ 
-    ylab("gene expression level") + xlab("snp dosage")
-    #geom_smooth(aes(group=1),method="lm")
+    ylab("gene expression level") + xlab("snp dosage")+
+    geom_smooth(aes(group=1),method="lm")
   my.bp # displays the boxplots
   
   #input a snp from chromosome 21
