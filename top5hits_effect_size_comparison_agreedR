@@ -1,0 +1,44 @@
+k_raw <- read.table("permutation_kallisto_scaled_tpm.all.txt.gz")
+f_raw <- read.table("permutation_featureCounts.all.txt.gz")
+k <- na.omit(k_raw)
+f <- na.omit(f_raw)
+k$V20 <- p.adjust(k$V19,method="BH")
+f$V20 <- p.adjust(f$V19,method="BH")
+
+
+top11_f <- f[order(f$V20,decreasing=F)[1:11],]
+
+top11_k <- k[order(k$V20,decreasing=F)[1:11],]
+
+top5_agreed <- intersect(top11_f$V1,top11_k$V1)
+#"rs6928273"  "rs12023052" "rs56176828" "rs11080327" "rs5751776" 
+#"ENSG00000164308" "ENSG00000051620" "ENSG00000198468" "ENSG00000254184" "ENSG00000166750"
+
+agreed5_in_k <- k[which(k$V1 %in% top5_agreed),]
+agreed5_in_f <- f[which(f$V1 %in% top5_agreed),]
+
+sig_snps <- agreed5_in_k$V8
+
+sig_genes <- agreed5_in_k$V1
+
+effect_sizes_kallisto <- agreed5_in_k$V17
+effect_sizes_featureCounts <- agreed5_in_f$V17
+
+for_plot <- data.frame(cbind(sig_genes,effect_sizes_featureCounts,effect_sizes_kallisto))
+
+library(ggplot2)
+pdf("top 5 hits agreed by both methods permutation pass.pdf")
+ggplot(for_plot, aes(x=as.numeric(effect_sizes_featureCounts), y=as.numeric(effect_sizes_kallisto))) +
+  geom_point()+
+  xlim(-2,2)+
+  ylim(-2,2)+
+  geom_text(
+    size=2,
+    label=for_plot$sig_genes, 
+    nudge_x = -0.25, nudge_y = 0.05, 
+    check_overlap = F
+  )+
+  labs(y= "effect sizes from kallisto",x="effect sizes from featureCounts")+
+  ggtitle("Effect Sizes for Top 5 Hits agreed by both methods")
+
+dev.off()
