@@ -1,0 +1,88 @@
+#1) plotting the effect sizes that are significant. 
+#take the union of significant tests, then plot the effect sizes in by the corresponding method 
+#and color them according to: they agree, kallisto only, featureCounts only
+
+k_raw <- read.table("permutation_kallisto_scaled_tpm.all.txt.gz")
+f_raw <- read.table("permutation_featureCounts.all.txt.gz")
+k <- na.omit(k_raw)
+f <- na.omit(f_raw)
+
+k$V20 <- p.adjust(k$V19,method="BH")
+f$V20 <- p.adjust(f$V19,method="BH")
+
+k_sig <- k[which(k$V20<=0.10),]          #2816
+f_sig <- f[which(f$V20<=0.10),]          #3267
+
+library(dplyr)
+agreed <- inner_join(k_sig, f_sig, by = c("V1","V2","V8","V9")) #1425
+View(agreed)
+#leave with 1geneID 2chrom# 8snpID 17.x k_effectsize 17.y f_effectsize
+#add a column "agreed"
+agreed <- agreed %>% select("V1","V2","V8","V17.x","V17.y")
+agreed$V21 <- rep("agreed",1425)
+colnames(agreed) <- c("geneID","chrom","snpID","keffect","feffect","method")
+View(agreed)
+
+`%notin%` <- Negate(`%in%`)
+k_only <- k_sig[which(k_sig$V1 %notin% agreed$geneID),]     #1391
+k_only <- k_only %>% select("V1","V2","V8","V17")
+colnames(k_only) <- c("geneID","chrom","snpID","keffect")
+k_only$feffect <- rep(NA,1391)
+k_only$method <- rep("kallisto only",1391)
+
+#find feffect in featureCounts nominal pass on hoffman
+fnp <- list()
+for (i in 1:22){
+  fnp[[i]] <- read.table(paste0('/u/project/zarlb/yiwen99/featureCounts_qtl/nominal_10/results','/nominal_',i,'.txt'))
+}
+
+for (j in 1:1391){
+  chrom <- k_only$chrom[j]
+  np <- fnp[[chrom]]
+  snp_match <- np[which(np$V8==k_only$snpID[j]),]
+  feffect <- snp_match[which(np$V1==k_only$geneID[j]),]$V13
+  if (feffect != numeric(0)){
+    k_only$feffect[j] <- feffect
+  }
+}
+
+saveRDS(k_only$feffect, "k_only_feffect.rds")
+
+#############################################################################################
+f_only <- f_sig[which(f_sig$V1 %notin% agreed$geneID),]     #1842
+f_only <- f_only %>% select("V1","V2","V8","V17")
+colnames(f_only) <- c("geneID","chrom","snpID","feffect")
+f_only$keffect <- rep(NA,1842)
+f_only$method <- rep("featureCounts only",1842)
+#find keffect in kallisto nominal pass
+#find feffect in featureCounts nominal pass on hoffman
+knp <- list()
+for (i in 1:22){
+  knp[[i]] <- read.table(paste0('/u/project/zarlb/yiwen99/QTL_pipeline/nominal_10/results','/nominal_',i,'.txt'))
+}
+
+for (j in 1:1391){
+  chrom <- f_only$chrom[j]
+  np <- knp[[chrom]]
+  snp_match <- np[which(np$V8==f_only$snpID[j]),]
+  keffect <- snp_match[which(np$V1==f_only$geneID[j]),]$V13
+  if (keffect != numeric(0)){
+    f_only$keffect[j] <- keffect
+  }
+}
+
+saveRDS(f_only$keffect, "k_only_feffect.rds")
+#make k_only and f_only complete
+
+test <- full_join(k_only,f_only)
+test <- full_join(agreed, test)
+
+library(ggplot2)
+pdf("significant effect sizes.pdf")
+ggplot(data=test, aes(x=feffect,y=keffect))+
+  geom_point(aes(color=method))+
+  scale_color_manual(values=c("seagreen","sandybrown","skyblue3"))+
+  ggtitle("Significant Effect Sizes (FDR <=0.1)")+
+  xlab("effect sizes from featureCounts")+ylab("effect sizes from kallisto")
+dev.off()
+#remove rows containing NA when plotting
