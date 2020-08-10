@@ -1,0 +1,125 @@
+#This is a "shorter" version of the boxplot-stratified-by-genotype function
+#This function can be applied to known gene-snp pair with known chromosome number (previously found by permutation pass output and nominal pass output)
+#It runs a lot faster per function since it does not need to search for the corresponding gene id or chromosome number in the nominal pass output in the function
+
+library(data.table)
+vcf <- fread('genotypes_yri.vcf.gz') #128 cols
+
+quant_method = 'kallisto_qqnorm'
+#quant_method = "featureCounts"
+bed_k <- list()
+for (i in 1:22){
+  #bed[[i]] <- read.delim(paste0(BASE,'/qtltools/',quant_method,'/qqnorm_',i,'.bed.gz'), sep="\t",stringsAsFactors=FALSE, quote="")
+  bed_k[[i]] <- read.delim(paste0(quant_method,'/qqnorm_',i,'.bed.gz'), sep="\t",stringsAsFactors=FALSE, quote="")
+}
+
+bed_f <- list()
+for (i in 1:22){
+  #bed[[i]] <- read.delim(paste0(BASE,'/qtltools/',quant_method,'/qqnorm_',i,'.bed.gz'), sep="\t",stringsAsFactors=FALSE, quote="")
+  bed_f[[i]] <- read.delim(paste0('featureCounts_qqnorm','/qqnorm_',i,'.bed.gz'), sep="\t",stringsAsFactors=FALSE, quote="")
+}
+
+intersection <- read.table("yri_sample_intersection.txt")
+samples <- intersection$V1
+
+library(ggplot2)
+box_genotype_k <- function(chrom,snp,gene){
+  vcf_row <- which(vcf$ID==snp)
+  bed_c <- bed_k[[chrom]] 
+  
+  #dosage
+  dosage_row <- vcf_row
+  dosage_samples <- vcf %>% select(samples)
+  dosage <- round(dosage_samples[dosage_row,])
+  
+  #expression level
+  level_row <- which(bed_c$gid==gene) 
+  levels <- bed_c[level_row,c(7:93)]
+  
+  for_boxplot <- as.data.frame(t(rbind(dosage,levels)))
+  
+  for_boxplot$V1 <- as.factor(for_boxplot$V1)
+  my.bp <- ggplot(data=for_boxplot, aes(y= V2, x=V1 ) )+geom_boxplot()+
+    geom_jitter(alpha=0.2)+
+    ggtitle(paste0(gene,"-",snp,"\nchromosome",chrom,"\nkallisto"))+ 
+    ylab("gene expression level") + xlab("snp dosage")+
+    geom_smooth(aes(group=1),method="lm")
+  my.bp # displays the boxplots
+}
+
+box_genotype_f <- function(chrom,snp,gene){
+  vcf_row <- which(vcf$ID==snp)
+  bed_c <- bed_f[[chrom]] 
+  
+  #dosage
+  dosage_row <- vcf_row
+  dosage_samples <- vcf %>% select(samples)
+  dosage <- round(dosage_samples[dosage_row,])
+  
+  #expression level
+  level_row <- which(bed_c$gid==gene) 
+  levels <- bed_c[level_row,c(7:93)]
+  
+  for_boxplot <- as.data.frame(t(rbind(dosage,levels)))
+  
+  for_boxplot$V1 <- as.factor(for_boxplot$V1)
+  my.bp <- ggplot(data=for_boxplot, aes(y= V2, x=V1 ) )+geom_boxplot()+
+    geom_jitter(alpha=0.2)+
+    ggtitle(paste0(gene,"-",snp,"\nchromosome",chrom,"\nfeatureCounts"))+ 
+    ylab("gene expression level") + xlab("snp dosage")+
+    geom_smooth(aes(group=1),method="lm")
+  my.bp # displays the boxplots
+}
+library("ggpubr")
+combine_boxplots <- function(chrom, snp, gene){
+  k <- box_genotype_k(chrom,snp,gene)
+  f <- box_genotype_f(chrom, snp, gene)
+  figure <- ggarrange(f, k,
+                      ncol = 2, nrow = 1)
+  figure
+}
+#only_pass_k1_k <- box_genotype_k(19,"rs732217","ENSG00000233927")
+#only_pass_k1_f <-box_genotype_f(19,"rs732217","ENSG00000233927")
+#figure <- ggarrange(only_pass_k1_f, only_pass_k1_k,
+                    #ncol = 2, nrow = 1)
+#figure
+####################################################################################
+#top 5 points with FDR passing kallisto but not passing featureCounts
+pdf("ENSG00000233927-rs732217 19.pdf")
+combine_boxplots(19,"rs732217","ENSG00000233927")
+dev.off()
+
+pdf("ENSG00000168894-rs2232747 2.pdf")
+combine_boxplots(2,"rs2232747","ENSG00000168894")
+dev.off()
+
+pdf("ENSG00000176261-rs704878 1.pdf")
+combine_boxplots(1,"rs704878","ENSG00000176261")
+dev.off()
+
+pdf("ENSG00000266967-rs7219730 17.pdf")
+combine_boxplots(17,"rs7219730","ENSG00000266967")
+dev.off()
+
+
+###################################################################################
+#top 5 points with FDR passing featureCounts but not passing kallisto
+pdf("ENSG00000181126-rs112731253 6.pdf")
+combine_boxplots(6,"rs112731253","ENSG00000181126")
+dev.off()
+
+pdf("ENSG00000170632-rs1404213 7.pdf")
+combine_boxplots(7,"rs1404213","ENSG00000170632")
+dev.off()
+
+pdf("ENSG00000176681-rs182191737 17.pdf")
+combine_boxplots(17,"rs182191737","ENSG00000176681")
+dev.off()
+
+pdf("ENSG00000269501-rs2814294 1.pdf")
+combine_boxplots(1,"rs2814294","ENSG00000269501")
+dev.off()
+
+pdf("ENSG00000251287-rs4610271 3.pdf")
+combine_boxplots(3,"rs4610271","ENSG00000251287")
+dev.off()
